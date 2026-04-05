@@ -1,50 +1,63 @@
 # Mini CI Runner
 
-Self-hosted CI/CD runner that executes stage-based pipelines asynchronously using FastAPI, PostgreSQL, Redis and RQ.
+Lightweight CI/CD system that executes pipeline stages asynchronously using FastAPI, Redis and background workers.
 
 ---
 
-## Overview
+## 🚀 What is this?
 
-Mini CI Runner is a backend-focused infrastructure project that allows you to:
+Mini CI Runner is a simplified backend implementation of a CI/CD system (inspired by GitLab CI / GitHub Actions).
 
-- Create pipelines with ordered stages
-- Execute pipelines asynchronously
-- Run commands in background workers
-- Store execution history and logs
-- Retry failed pipelines
-- Apply timeout control per stage
+It allows you to define pipelines, execute them asynchronously, and track execution results — including retries, logs, and failures.
 
-The project simulates core behavior of CI/CD systems like GitLab CI or GitHub Actions on a simplified level.
+This project focuses on **backend orchestration, job execution, and infrastructure logic**, not UI.
 
 ---
 
-## Features
+## ⚙️ Key Features
 
-- Pipeline CRUD
-- Ordered stage execution
-- Asynchronous execution (Redis + RQ)
-- Run history tracking
-- Stage-level logs and exit codes
-- Automatic retry support
-- Stage timeout handling
-- Basic API tests (pytest)
-
----
-
-## Tech Stack
-
-- FastAPI
-- SQLAlchemy
-- PostgreSQL
-- Redis
-- RQ (Redis Queue)
-- Pytest
-- Docker Compose
+- Pipeline system with ordered stages
+- Asynchronous execution (Redis + RQ workers)
+- Background job processing
+- Retry mechanism for failed pipelines
+- Stage-level timeout control
+- Execution logs and exit codes
+- Persistent run history
 
 ---
 
-## Project Structure
+## 🧠 Why this project matters
+
+This is not a CRUD app.
+
+This project demonstrates:
+
+- async job orchestration
+- queue-based architecture
+- failure handling & retries
+- system design similar to real CI/CD platforms
+- separation of API and worker execution
+
+---
+
+## 🏗️ Architecture
+
+
+Client → FastAPI → Redis Queue → Worker → Execution → Database
+
+
+Flow:
+
+1. User creates pipeline
+2. User triggers run
+3. API pushes job to Redis
+4. Worker executes stages sequentially
+5. Results are stored in DB
+6. Retry logic is applied if needed
+
+---
+
+## 🗂️ Project Structure
 
 
 app/
@@ -60,35 +73,13 @@ app/
 └── jobs.py
 
 tests/
-├── conftest.py
 ├── test_pipelines.py
 └── test_runs.py
 
 
 ---
 
-## How It Works
-
-1. A pipeline is created via API.
-2. Each pipeline contains ordered stages (commands).
-3. A run request is sent.
-4. The API enqueues a job into Redis.
-5. RQ worker executes stages sequentially.
-6. Each stage stores:
-   - status
-   - output
-   - exit code
-   - timestamps
-7. If a stage fails:
-   - pipeline stops
-   - retry is triggered (if configured)
-8. If timeout is exceeded:
-   - stage is terminated
-   - marked as failed
-
----
-
-## API Endpoints
+## 🔌 API Endpoints
 
 ### Pipelines
 
@@ -104,79 +95,48 @@ tests/
 
 ---
 
-## Example Pipeline
+## 📦 Example Pipeline
 
 ```json
 {
-  "name": "demo-pipeline",
-  "description": "Simple demo pipeline",
-  "max_retries": 1,
+  "name": "demo",
+  "max_retries": 2,
   "stages": [
     {
-      "name": "lint",
-      "command": "echo lint",
-      "order": 1,
-      "timeout_seconds": 5
-    },
-    {
-      "name": "test",
-      "command": "echo test",
-      "order": 2,
-      "timeout_seconds": 5
+      "name": "step-1",
+      "command": "echo hello",
+      "order": 1
     }
   ]
 }
-Local Setup
-1. Clone repository
+🧪 Example Run
+curl -X POST http://127.0.0.1:8000/runs/pipelines/1
+🛠️ Tech Stack
+FastAPI
+PostgreSQL
+SQLAlchemy
+Redis
+RQ
+Pytest
+Docker
+▶️ Run locally
 git clone git@github.com:zamafigl/mini-ci-runner.git
 cd mini-ci-runner
-2. Create virtual environment
 python3 -m venv venv
 source venv/bin/activate
-3. Install dependencies
 pip install -r requirements.txt
-4. Create .env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5434/mini_ci
-Run Project
-Start infrastructure
 docker compose up -d
-Run API
 uvicorn app.main:app --reload
-Run worker
 PYTHONPATH=. rq worker mini-ci
-Example Usage
-Create pipeline
-curl -X POST "http://127.0.0.1:8000/pipelines" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "retry-pipeline",
-    "description": "Pipeline with retry",
-    "max_retries": 2,
-    "stages": [
-      {
-        "name": "fail-stage",
-        "command": "python -c \"import sys; sys.exit(1)\"",
-        "order": 1,
-        "timeout_seconds": 5
-      }
-    ]
-  }'
-Run pipeline
-curl -X POST "http://127.0.0.1:8000/runs/pipelines/1"
-Get runs
-curl "http://127.0.0.1:8000/runs"
-Testing
+🧪 Tests
 pytest -v
-Current Limitations
-Uses local subprocess execution
-No Docker isolation yet
+⚠️ Limitations
+Uses subprocess (no container isolation yet)
 No authentication
 No webhook triggers
-No live logs streaming
-Future Improvements
-Docker-based executor
-Webhook trigger (GitHub push → run)
-Manual retry endpoint
-Structured logging
-Stage environment variables
+No UI
+🚧 Next steps
+Docker-based execution (like real CI)
+GitHub webhook integration
 Live logs streaming
+Parallel stage execution
