@@ -1,0 +1,45 @@
+from datetime import datetime
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+
+
+class StageCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    command: str = Field(..., min_length=1)
+    order: int = Field(..., ge=1)
+
+
+class PipelineCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    description: str | None = None
+    stages: list[StageCreate]
+
+    @field_validator("stages")
+    @classmethod
+    def validate_stages_not_empty(cls, value: list[StageCreate]):
+        if not value:
+            raise ValueError("Pipeline must contain at least one stage")
+
+        orders = [stage.order for stage in value]
+        if len(orders) != len(set(orders)):
+            raise ValueError("Stage order values must be unique")
+
+        return value
+
+
+class StageRead(BaseModel):
+    id: int
+    name: str
+    command: str
+    order: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PipelineRead(BaseModel):
+    id: int
+    name: str
+    description: str | None
+    created_at: datetime
+    stages: list[StageRead]
+
+    model_config = ConfigDict(from_attributes=True)

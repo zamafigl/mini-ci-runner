@@ -8,3 +8,5 @@ alembic
 redis
 rq
 python-dotenv
+pytest
+httpx
