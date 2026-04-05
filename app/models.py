@@ -27,9 +27,18 @@ class Pipeline(Base):
     __tablename__ = "pipelines"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(
+        String(120),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
 
     stages: Mapped[list["Stage"]] = relationship(
         "Stage",
@@ -41,6 +50,7 @@ class Pipeline(Base):
         "PipelineRun",
         back_populates="pipeline",
         cascade="all, delete-orphan",
+        order_by="PipelineRun.created_at.desc()",
     )
 
 
@@ -48,19 +58,28 @@ class Stage(Base):
     __tablename__ = "stages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    pipeline_id: Mapped[int] = mapped_column(ForeignKey("pipelines.id", ondelete="CASCADE"), nullable=False)
+    pipeline_id: Mapped[int] = mapped_column(
+        ForeignKey("pipelines.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     command: Mapped[str] = mapped_column(Text, nullable=False)
     order: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    pipeline: Mapped["Pipeline"] = relationship("Pipeline", back_populates="stages")
+    pipeline: Mapped["Pipeline"] = relationship(
+        "Pipeline",
+        back_populates="stages",
+    )
 
 
 class PipelineRun(Base):
     __tablename__ = "pipeline_runs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    pipeline_id: Mapped[int] = mapped_column(ForeignKey("pipelines.id", ondelete="CASCADE"), nullable=False)
+    pipeline_id: Mapped[int] = mapped_column(
+        ForeignKey("pipelines.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     status: Mapped[PipelineRunStatus] = mapped_column(
         SqlEnum(PipelineRunStatus),
         default=PipelineRunStatus.PENDING,
@@ -68,13 +87,21 @@ class PipelineRun(Base):
     )
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
 
-    pipeline: Mapped["Pipeline"] = relationship("Pipeline", back_populates="runs")
+    pipeline: Mapped["Pipeline"] = relationship(
+        "Pipeline",
+        back_populates="runs",
+    )
     stage_runs: Mapped[list["StageRun"]] = relationship(
         "StageRun",
         back_populates="pipeline_run",
         cascade="all, delete-orphan",
+        order_by="StageRun.id",
     )
 
 
@@ -98,4 +125,7 @@ class StageRun(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    pipeline_run: Mapped["StageRun"] = relationship("PipelineRun", back_populates="stage_runs")
+    pipeline_run: Mapped["PipelineRun"] = relationship(
+        "PipelineRun",
+        back_populates="stage_runs",
+    )

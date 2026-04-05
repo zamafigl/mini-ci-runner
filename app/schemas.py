@@ -43,3 +43,28 @@ class PipelineRead(BaseModel):
     stages: list[StageRead]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class StageRunRead(BaseModel):
+    id: int
+    stage_name: str
+    command: str
+    status: str
+    output: str | None
+    exit_code: int | None
+    started_at: datetime | None
+    finished_at: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PipelineRunRead(BaseModel):
+    id: int
+    pipeline_id: int
+    status: str
+    started_at: datetime | None
+    finished_at: datetime | None
+    created_at: datetime
+    stage_runs: list[StageRunRead]
+
+    model_config = ConfigDict(from_attributes=True)

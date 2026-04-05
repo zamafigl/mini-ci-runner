@@ -28,3 +28,7 @@ dist/
 .DS_Store
 Thumbs.db
 
+test.db
+
+*.swp
+*.swo
