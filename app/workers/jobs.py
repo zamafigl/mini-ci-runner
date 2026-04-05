@@ -4,10 +4,16 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.models import PipelineRun, StageRun, Pipeline, Stage, PipelineRunStatus, StageRunStatus
+from app.models import (
+    Pipeline,
+    PipelineRun,
+    PipelineRunStatus,
+    StageRun,
+    StageRunStatus,
+)
 
 
-def run_pipeline_job(pipeline_id: int):
+def run_pipeline_job(pipeline_id: int, retry_count: int = 0):
     db: Session = SessionLocal()
 
     try:
@@ -18,6 +24,7 @@ def run_pipeline_job(pipeline_id: int):
         pipeline_run = PipelineRun(
             pipeline_id=pipeline.id,
             status=PipelineRunStatus.RUNNING,
+            retry_count=retry_count,
             started_at=datetime.utcnow(),
         )
 
@@ -44,15 +51,23 @@ def run_pipeline_job(pipeline_id: int):
                     shell=True,
                     capture_output=True,
                     text=True,
+                    timeout=stage.timeout_seconds,
                 )
 
-                stage_run.output = result.stdout + result.stderr
+                stage_run.output = (result.stdout or "") + (result.stderr or "")
                 stage_run.exit_code = result.returncode
 
                 if result.returncode == 0:
                     stage_run.status = StageRunStatus.SUCCESS
                 else:
                     stage_run.status = StageRunStatus.FAILED
+
+            except subprocess.TimeoutExpired as e:
+                stdout = e.stdout or ""
+                stderr = e.stderr or ""
+                stage_run.output = f"Timeout exceeded after {stage.timeout_seconds} seconds\n{stdout}{stderr}"
+                stage_run.status = StageRunStatus.FAILED
+                stage_run.exit_code = -1
 
             except Exception as e:
                 stage_run.output = str(e)
@@ -66,6 +81,11 @@ def run_pipeline_job(pipeline_id: int):
                 pipeline_run.status = PipelineRunStatus.FAILED
                 pipeline_run.finished_at = datetime.utcnow()
                 db.commit()
+
+                if retry_count < pipeline.max_retries:
+                    from app.workers.queue import queue
+                    queue.enqueue(run_pipeline_job, pipeline_id, retry_count + 1)
+
                 return
 
         pipeline_run.status = PipelineRunStatus.SUCCESS
