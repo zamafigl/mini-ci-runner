@@ -27,18 +27,10 @@ class Pipeline(Base):
     __tablename__ = "pipelines"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(
-        String(120),
-        unique=True,
-        nullable=False,
-        index=True,
-    )
+    name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        nullable=False,
-    )
+    max_retries: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     stages: Mapped[list["Stage"]] = relationship(
         "Stage",
@@ -58,13 +50,11 @@ class Stage(Base):
     __tablename__ = "stages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    pipeline_id: Mapped[int] = mapped_column(
-        ForeignKey("pipelines.id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    pipeline_id: Mapped[int] = mapped_column(ForeignKey("pipelines.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     command: Mapped[str] = mapped_column(Text, nullable=False)
     order: Mapped[int] = mapped_column(Integer, nullable=False)
+    timeout_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     pipeline: Mapped["Pipeline"] = relationship(
         "Pipeline",
@@ -76,22 +66,16 @@ class PipelineRun(Base):
     __tablename__ = "pipeline_runs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    pipeline_id: Mapped[int] = mapped_column(
-        ForeignKey("pipelines.id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    pipeline_id: Mapped[int] = mapped_column(ForeignKey("pipelines.id", ondelete="CASCADE"), nullable=False)
     status: Mapped[PipelineRunStatus] = mapped_column(
         SqlEnum(PipelineRunStatus),
         default=PipelineRunStatus.PENDING,
         nullable=False,
     )
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        nullable=False,
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     pipeline: Mapped["Pipeline"] = relationship(
         "Pipeline",

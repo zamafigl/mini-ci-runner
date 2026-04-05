@@ -6,11 +6,13 @@ class StageCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     command: str = Field(..., min_length=1)
     order: int = Field(..., ge=1)
+    timeout_seconds: int | None = Field(default=None, ge=1)
 
 
 class PipelineCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     description: str | None = None
+    max_retries: int = Field(default=0, ge=0, le=5)
     stages: list[StageCreate]
 
     @field_validator("stages")
@@ -31,6 +33,7 @@ class StageRead(BaseModel):
     name: str
     command: str
     order: int
+    timeout_seconds: int | None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -39,6 +42,7 @@ class PipelineRead(BaseModel):
     id: int
     name: str
     description: str | None
+    max_retries: int
     created_at: datetime
     stages: list[StageRead]
 
@@ -62,6 +66,7 @@ class PipelineRunRead(BaseModel):
     id: int
     pipeline_id: int
     status: str
+    retry_count: int
     started_at: datetime | None
     finished_at: datetime | None
     created_at: datetime

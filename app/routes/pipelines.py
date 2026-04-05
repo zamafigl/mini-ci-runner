@@ -5,7 +5,6 @@ from app.db import get_db
 from app.models import Pipeline, Stage
 from app.schemas import PipelineCreate, PipelineRead
 
-
 router = APIRouter(prefix="/pipelines", tags=["pipelines"])
 
 
@@ -21,6 +20,7 @@ def create_pipeline(payload: PipelineCreate, db: Session = Depends(get_db)):
     pipeline = Pipeline(
         name=payload.name,
         description=payload.description,
+        max_retries=payload.max_retries,
     )
 
     for stage_data in payload.stages:
@@ -28,6 +28,7 @@ def create_pipeline(payload: PipelineCreate, db: Session = Depends(get_db)):
             name=stage_data.name,
             command=stage_data.command,
             order=stage_data.order,
+            timeout_seconds=stage_data.timeout_seconds,
         )
         pipeline.stages.append(stage)
 

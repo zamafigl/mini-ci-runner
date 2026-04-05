@@ -1,13 +1,15 @@
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 
 venv/
 .venv/
+env/
 
 .env
-
-.vscode/
-.idea/
+*.swp
+*.swo
 
 .pytest_cache/
 .mypy_cache/
@@ -16,19 +18,11 @@ venv/
 .coverage
 htmlcov/
 
-*.log
-
 *.db
 *.sqlite3
 
-build/
-dist/
-*.egg-info/
+.idea/
+.vscode/
 
 .DS_Store
 Thumbs.db
-
-test.db
-
-*.swp
-*.swo
