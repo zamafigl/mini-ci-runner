@@ -109,9 +109,13 @@ tests/
     }
   ]
 }
-🧪 Example Run
+
+
+---
+## 🧪 Example Run
 curl -X POST http://127.0.0.1:8000/runs/pipelines/1
-🛠️ Tech Stack
+---
+## 🛠️ Tech Stack
 FastAPI
 PostgreSQL
 SQLAlchemy
@@ -119,7 +123,9 @@ Redis
 RQ
 Pytest
 Docker
-▶️ Run locally
+---
+
+## ▶️ Run locally
 git clone git@github.com:zamafigl/mini-ci-runner.git
 cd mini-ci-runner
 python3 -m venv venv
@@ -128,14 +134,19 @@ pip install -r requirements.txt
 docker compose up -d
 uvicorn app.main:app --reload
 PYTHONPATH=. rq worker mini-ci
-🧪 Tests
+---
+
+## 🧪 Tests
 pytest -v
-⚠️ Limitations
+---
+
+## ⚠️ Limitations
 Uses subprocess (no container isolation yet)
 No authentication
 No webhook triggers
 No UI
-🚧 Next steps
+---
+## 🚧 Next steps
 Docker-based execution (like real CI)
 GitHub webhook integration
 Live logs streaming
