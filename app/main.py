@@ -3,11 +3,9 @@ from sqlalchemy import text
 
 from app import models  # noqa: F401
 from app.core.config import settings
-from app.db import Base, engine
+from app.db import engine
 from app.routes.pipelines import router as pipelines_router
 from app.routes.runs import router as runs_router
-
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=settings.app_name)
 
