@@ -1,9 +1,7 @@
 import redis
 from rq import Queue
 
-redis_conn = redis.Redis(host="localhost", port = 6379, db=0)
+from app.core.config import settings
 
-
-queue = Queue("mini-ci", connection = redis_conn)
-
-
+redis_conn = redis.Redis.from_url(settings.redis_url)
+queue = Queue(settings.queue_name, connection=redis_conn)

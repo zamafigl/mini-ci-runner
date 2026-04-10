@@ -1,27 +1,26 @@
+from collections.abc import Generator
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.config import settings
 
-class Settings(BaseSettings):
-    database_url: str
+engine = create_engine(
+    settings.database_url,
+    echo=settings.debug,
+    pool_pre_ping=True,
+)
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
-
-
-settings = Settings()
-
-engine = create_engine(settings.database_url, echo=False)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+)
 
 Base = declarative_base()
 
 
-def get_db():
+def get_db() -> Generator:
     db = SessionLocal()
     try:
         yield db
