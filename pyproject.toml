@@ -1,0 +1,10 @@
+[project]
+name = "mini-ci-runner"
+version = "0.1.0"
+description = "Self-hosted CI runner with FastAPI, Redis, RQ, PostgreSQL and pipeline run history"
+readme = "README.md"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
