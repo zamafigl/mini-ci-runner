@@ -1,130 +1,288 @@
 # Mini CI Runner
 
-Lightweight CI/CD system that executes pipeline stages asynchronously using FastAPI, Redis and background workers.
+> A lightweight self-hosted CI/CD backend that executes stage-based pipelines asynchronously with FastAPI, Redis, RQ, and PostgreSQL.
 
 ---
 
-## 🚀 What is this?
+## Overview
 
-Mini CI Runner is a simplified backend implementation of a CI/CD system inspired by GitLab CI and GitHub Actions.
+**Mini CI Runner** is a small backend system inspired by real CI/CD platforms like GitHub Actions and GitLab CI.
 
-It allows you to define pipelines, execute them asynchronously, and track execution results — including retries, logs, and failures.
+It lets you:
 
-This project focuses on **backend orchestration, job execution, and infrastructure logic**, not UI.
+- define pipelines with ordered stages
+- trigger pipeline runs via API
+- execute jobs asynchronously in a background worker
+- store run history and stage results
+- retry failed runs
+- inspect execution output and statuses
 
----
-
-## ⚙️ Key Features
-
-- Pipeline system with ordered stages
-- Asynchronous execution using Redis + RQ workers
-- Background job processing
-- Retry mechanism for failed pipelines
-- Stage-level timeout control
-- Execution logs and exit codes
-- Persistent run history
+This project is focused on **backend orchestration**, **queue-based execution**, and **pipeline lifecycle management**.
 
 ---
 
-## 🧠 Why this project matters
+## Why this project is worth attention
 
-This is not a CRUD app.
+This is not another CRUD demo.
 
-This project demonstrates:
+It shows practical backend and DevOps-oriented concepts:
 
-- async job orchestration
+- background job execution
 - queue-based architecture
-- failure handling and retries
-- system design similar to real CI/CD platforms
-- separation of API and worker execution
+- API + worker separation
+- stage-by-stage pipeline processing
+- retry logic
+- timeout handling
+- persistent execution history
+- subprocess-based command execution
 
 ---
 
-## 🏗️ Architecture
+## Tech Stack
+
+- **FastAPI** — API layer
+- **PostgreSQL** — persistence
+- **SQLAlchemy** — ORM
+- **Redis** — queue backend
+- **RQ** — background job processing
+- **Pytest** — tests
+- **Docker / Docker Compose** — local infrastructure
+
+---
+
+## Architecture
 
 ```text
-Client → FastAPI → Redis Queue → Worker → Execution → Database
-Flow
-User creates a pipeline
-User triggers a run
-API pushes the job to Redis
-Worker executes stages sequentially
-Results are stored in the database
-Retry logic is applied if needed
-🗂️ Project Structure
-app/
-├── main.py
-├── db.py
-├── models.py
-├── schemas.py
-├── routes/
-│   ├── pipelines.py
-│   └── runs.py
-└── workers/
-    ├── queue.py
-    └── jobs.py
-
-tests/
-├── test_pipelines.py
-└── test_runs.py
-🔌 API Endpoints
-Pipelines
-POST /pipelines
-GET /pipelines
-GET /pipelines/{id}
+Client
+  │
+  ▼
+FastAPI API
+  │
+  ▼
+Redis Queue
+  │
+  ▼
+RQ Worker
+  │
+  ▼
+Pipeline Stage Execution
+  │
+  ▼
+PostgreSQL
+```
+**Execution flow**\
+A user creates a pipeline.\
+A user triggers a run for that pipeline.\
+The API places a job into Redis.\
+The worker picks up the job.\
+Stages are executed sequentially.\
+Logs, statuses, and exit codes are stored in the database.\
+Failed runs can be retried.\
+**Features**\
+Pipeline creation with multiple ordered stages\
+Asynchronous execution through Redis + RQ\
+Run history storage\
+Stage-level status tracking\
+Command output logging\
+Exit code tracking\
+Retry endpoint for failed runs\
+Health-check endpoints\
+Stage timeout support\
+## Project Structure
+```
+mini-ci-runner/
+├── app/
+│   ├── __init__.py
+│   ├── db.py
+│   ├── main.py
+│   ├── models.py
+│   ├── schemas.py
+│   ├── core/
+│   │   └── config.py
+│   ├── routes/
+│   │   ├── pipelines.py
+│   │   └── runs.py
+│   └── workers/
+│       ├── jobs.py
+│       └── queue.py
+├── tests/
+│   ├── test_pipelines.py
+│   └── test_runs.py
+├── .env.example
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+└── README.md
+```
+## API Endpoints
+Pipelines\
+```
+Method	Endpoint	Description
+POST	/pipelines	Create a pipeline
+GET	/pipelines	List all pipelines
+GET	/pipelines/{pipeline_id}	Get pipeline by ID
 Runs
-POST /runs/pipelines/{pipeline_id}
-POST /runs/{run_id}/retry
-GET /runs
-GET /runs/{id}
-📦 Example Pipeline
+Method	Endpoint	Description
+POST	/runs/pipelines/{pipeline_id}	Trigger a pipeline run
+POST	/runs/{run_id}/retry	Retry an existing run
+GET	/runs	List all runs
+GET	/runs/{run_id}	Get run by ID
+Health
+Method	Endpoint	Description
+GET	/health	Basic service health
+GET	/db-health	Database connectivity check
+```
+
+**Example Pipeline Payload**\
+```
 {
-  "name": "retry-pipeline",
-  "description": "Pipeline with retry and timeout",
-  "max_retries": 2,
+  "name": "demo-pipeline",
+  "description": "Simple CI pipeline",
+  "max_retries": 1,
   "stages": [
     {
-      "name": "build",
-      "command": "echo build",
+      "name": "lint",
+      "command": "echo lint",
       "order": 1,
-      "timeout_seconds": 5
+      "timeout_seconds": 10
     },
     {
       "name": "test",
-      "command": "python -c \\"import sys; sys.exit(1)\\"",
+      "command": "echo test",
       "order": 2,
-      "timeout_seconds": 5
+      "timeout_seconds": 10
     }
   ]
 }
-🧪 Example Run
-curl -X POST http://127.0.0.1:8000/runs/pipelines/1
-🛠️ Tech Stack
-FastAPI
-PostgreSQL
-SQLAlchemy
-Redis
-RQ
-Pytest
-Docker
-▶️ Run locally
-git clone git@github.com:zamafigl/mini-ci-runner.git
+```
+**Quick Start**
+1. Clone the repository
+git clone https://github.com/zamafigl/mini-ci-runner.git
 cd mini-ci-runner
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+2. Create and fill .env
+cp .env.example .env
+
+Example:
+```
+APP_NAME=Mini CI Runner
+DEBUG=true
+
+POSTGRES_DB=mini_ci
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5434
+
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_DB=0
+QUEUE_NAME=mini-ci
+```
+3. Start infrastructure
 docker compose up -d
+
+This starts:
+
+PostgreSQL
+Redis\
+4. Create a virtual environment
+python3 -m venv venv
+source venv/bin/activate\
+5. Install dependencies
+pip install -r requirements.txt\
+6. Run the API
 uvicorn app.main:app --reload
+
+API will be available at:
+
+http://127.0.0.1:8000
+
+Docs:
+http://127.0.0.1:8000/docs \
+7. Run the worker
+
+In a second terminal:
+```
+source venv/bin/activate
 PYTHONPATH=. rq worker mini-ci
-🧪 Tests
+Example Usage
+Create pipeline
+curl -X POST "http://127.0.0.1:8000/pipelines" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "demo-pipeline",
+    "description": "Simple CI pipeline",
+    "max_retries": 1,
+    "stages": [
+      {
+        "name": "build",
+        "command": "echo building",
+        "order": 1,
+        "timeout_seconds": 5
+      },
+      {
+        "name": "test",
+        "command": "echo testing",
+        "order": 2,
+        "timeout_seconds": 5
+      }
+    ]
+  }'
+```
+**Trigger run**
+```
+curl -X POST "http://127.0.0.1:8000/runs/pipelines/1"
+```
+**List runs**
+```
+curl "http://127.0.0.1:8000/runs"
+```
+**Retry run**
+```
+curl -X POST "http://127.0.0.1:8000/runs/1/retry"
+```
+**Running Tests**
+```
 pytest -v
-⚠️ Limitations
-Uses subprocess execution (no container isolation yet)
-No authentication
-No webhook triggers
-No UI
-🚧 Next Steps
-Docker-based execution similar to real CI systems
-GitHub webhook integration
-Live logs streaming
-Parallel stage execution
+```
+**Current Limitations**\
+Commands are executed with subprocess, without container isolation
+No authentication or authorization
+No Git webhook triggers yet
+No frontend/UI
+No parallel stage execution
+Logs are stored in DB, but there is no live streaming yet
+Roadmap
+ Docker-isolated job execution
+ GitHub/GitLab webhook triggers
+ Live log streaming
+ Parallel stage execution
+ Authentication
+ Better observability and metrics
+ Per-project runner configuration
+What this project demonstrates
+
+This repository is useful as a portfolio project for roles related to:
+
+Junior Python Backend
+Junior DevOps
+Infrastructure / Platform Engineer trainee roles
+Automation-focused backend roles
+
+It demonstrates that the author can work with:
+
+API design
+async task execution patterns
+Redis-based queues
+PostgreSQL integration
+worker architecture
+Dockerized local infrastructure
+pipeline-oriented backend logic
+Author
+
+**Alexander**\
+**GitHub: zamafigl**
+
+## License
+
+**This project is for educational and portfolio purposes.**
