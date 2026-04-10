@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 import app.routes.runs as runs_routes
 
 
@@ -24,7 +22,7 @@ def create_pipeline(client):
         ],
     }
     response = client.post("/pipelines", json=payload)
-    assert response.status_code == 200
+    assert response.status_code == 201
     return response.json()["id"]
 
 
@@ -32,29 +30,36 @@ def test_run_pipeline_enqueues_job(client, monkeypatch):
     pipeline_id = create_pipeline(client)
     captured = {}
 
+    class FakeJob:
+        id = "job-123"
+
     class FakeQueue:
-        def enqueue(self, func, run_id, job_timeout=None):
+        def enqueue(self, func, run_id):
             captured["func_name"] = func.__name__
             captured["run_id"] = run_id
-            captured["job_timeout"] = job_timeout
+            return FakeJob()
 
     monkeypatch.setattr(runs_routes, "queue", FakeQueue())
 
     response = client.post(f"/runs/pipelines/{pipeline_id}")
-    assert response.status_code == 200
+    assert response.status_code == 202
 
     data = response.json()
     assert data["pipeline_id"] == pipeline_id
-    assert data["status"] in ["pending", "queued", "running"]
-    assert captured["func_name"]
+    assert data["status"] == "pending"
+    assert captured["func_name"] == "run_pipeline_job"
+    assert isinstance(captured["run_id"], int)
 
 
 def test_list_runs(client, monkeypatch):
     pipeline_id = create_pipeline(client)
 
+    class FakeJob:
+        id = "job-123"
+
     class FakeQueue:
-        def enqueue(self, func, run_id, job_timeout=None):
-            return None
+        def enqueue(self, func, run_id):
+            return FakeJob()
 
     monkeypatch.setattr(runs_routes, "queue", FakeQueue())
     client.post(f"/runs/pipelines/{pipeline_id}")
@@ -67,9 +72,12 @@ def test_list_runs(client, monkeypatch):
 def test_get_run_by_id(client, monkeypatch):
     pipeline_id = create_pipeline(client)
 
+    class FakeJob:
+        id = "job-123"
+
     class FakeQueue:
-        def enqueue(self, func, run_id, job_timeout=None):
-            return None
+        def enqueue(self, func, run_id):
+            return FakeJob()
 
     monkeypatch.setattr(runs_routes, "queue", FakeQueue())
     create_run = client.post(f"/runs/pipelines/{pipeline_id}")

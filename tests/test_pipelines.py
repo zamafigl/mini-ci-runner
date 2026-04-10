@@ -20,7 +20,7 @@ def test_create_pipeline(client):
     }
 
     response = client.post("/pipelines", json=payload)
-    assert response.status_code == 200
+    assert response.status_code == 201
 
     data = response.json()
     assert data["name"] == "demo-pipeline"

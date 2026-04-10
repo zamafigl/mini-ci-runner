@@ -1,11 +1,10 @@
 import subprocess
-from datetime import datetime
+from datetime import datetime, UTC
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.db import SessionLocal
 from app.models import (
-    Pipeline,
     PipelineRun,
     PipelineRunStatus,
     StageRun,
@@ -13,24 +12,28 @@ from app.models import (
 )
 
 
-def run_pipeline_job(pipeline_id: int, retry_count: int = 0):
+def run_pipeline_job(run_id: int):
     db: Session = SessionLocal()
-
     try:
-        pipeline = db.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
-        if not pipeline:
+        pipeline_run = (
+            db.query(PipelineRun)
+            .options(selectinload(PipelineRun.pipeline).selectinload("stages"))
+            .filter(PipelineRun.id == run_id)
+            .first()
+        )
+        if not pipeline_run:
             return
 
-        pipeline_run = PipelineRun(
-            pipeline_id=pipeline.id,
-            status=PipelineRunStatus.RUNNING,
-            retry_count=retry_count,
-            started_at=datetime.utcnow(),
-        )
+        pipeline = pipeline_run.pipeline
+        if not pipeline:
+            pipeline_run.status = PipelineRunStatus.FAILED
+            pipeline_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
+            db.commit()
+            return
 
-        db.add(pipeline_run)
+        pipeline_run.status = PipelineRunStatus.RUNNING
+        pipeline_run.started_at = datetime.now(UTC).replace(tzinfo=None)
         db.commit()
-        db.refresh(pipeline_run)
 
         for stage in sorted(pipeline.stages, key=lambda s: s.order):
             stage_run = StageRun(
@@ -38,9 +41,8 @@ def run_pipeline_job(pipeline_id: int, retry_count: int = 0):
                 stage_name=stage.name,
                 command=stage.command,
                 status=StageRunStatus.RUNNING,
-                started_at=datetime.utcnow(),
+                started_at=datetime.now(UTC).replace(tzinfo=None),
             )
-
             db.add(stage_run)
             db.commit()
             db.refresh(stage_run)
@@ -53,43 +55,38 @@ def run_pipeline_job(pipeline_id: int, retry_count: int = 0):
                     text=True,
                     timeout=stage.timeout_seconds,
                 )
-
                 stage_run.output = (result.stdout or "") + (result.stderr or "")
                 stage_run.exit_code = result.returncode
-
                 if result.returncode == 0:
                     stage_run.status = StageRunStatus.SUCCESS
                 else:
                     stage_run.status = StageRunStatus.FAILED
 
-            except subprocess.TimeoutExpired as e:
-                stdout = e.stdout or ""
-                stderr = e.stderr or ""
-                stage_run.output = f"Timeout exceeded after {stage.timeout_seconds} seconds\n{stdout}{stderr}"
+            except subprocess.TimeoutExpired as exc:
+                stdout = exc.stdout or ""
+                stderr = exc.stderr or ""
+                stage_run.output = (
+                    f"Timeout exceeded after {stage.timeout_seconds} seconds\n{stdout}{stderr}"
+                )
                 stage_run.status = StageRunStatus.FAILED
                 stage_run.exit_code = -1
 
-            except Exception as e:
-                stage_run.output = str(e)
+            except Exception as exc:
+                stage_run.output = str(exc)
                 stage_run.status = StageRunStatus.FAILED
                 stage_run.exit_code = -1
 
-            stage_run.finished_at = datetime.utcnow()
+            stage_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
             db.commit()
 
             if stage_run.status == StageRunStatus.FAILED:
                 pipeline_run.status = PipelineRunStatus.FAILED
-                pipeline_run.finished_at = datetime.utcnow()
+                pipeline_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
                 db.commit()
-
-                if retry_count < pipeline.max_retries:
-                    from app.workers.queue import queue
-                    queue.enqueue(run_pipeline_job, pipeline_id, retry_count + 1)
-
                 return
 
         pipeline_run.status = PipelineRunStatus.SUCCESS
-        pipeline_run.finished_at = datetime.utcnow()
+        pipeline_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
         db.commit()
 
     finally:
